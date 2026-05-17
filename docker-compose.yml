@@ -1,0 +1,46 @@
+version: '3.9'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: apisec_mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: api_security
+
+  backend:
+    build: ./backend
+    container_name: apisec_backend
+    restart: unless-stopped
+    ports:
+      - '4000:4000'
+    depends_on:
+      - mongodb
+    environment:
+      PORT: 4000
+      MONGO_URI: mongodb://mongodb:27017/api_security
+      JWT_SECRET: ${JWT_SECRET:-change_this_in_production_please}
+      JWT_EXPIRY: 24h
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      RATE_LIMIT_THRESHOLD: 30
+      BRUTE_FORCE_THRESHOLD: 5
+
+  frontend:
+    build: ./frontend
+    container_name: apisec_frontend
+    restart: unless-stopped
+    ports:
+      - '3000:80'
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:4000/api
+      VITE_SOCKET_URL: http://localhost:4000
+
+volumes:
+  mongo_data:
